@@ -10,25 +10,20 @@ typedef struct LinkedList {
     Node* head;
 } LinkedList;
 
-void insert(LinkedList* list, int data, int position) {
+void add(LinkedList* list, int data) {
     Node* newNode = (Node*) malloc(sizeof(Node));
     newNode->data = data;
+    newNode->next = NULL;
 
-    // insert at beginning
-    if (position == 0) {
-        newNode->next = list->head;
+    if (list->head == NULL) {
         list->head = newNode;
         return;
     }
 
     Node* current = list->head;
-    int i = 0;
-    while (i < position - 1 && current->next != NULL) {
+    while (current->next != NULL) {
         current = current->next;
-        i++;
     }
-
-    newNode->next = current->next;
     current->next = newNode;
 }
 
@@ -36,10 +31,10 @@ int main() {
     LinkedList list;
     list.head = NULL;
 
-    insert(&list, 10, 0);
-    insert(&list, 20, 1);
-    insert(&list, 30, 2);
-    insert(&list, 40, 3);
+    add(&list, 10);
+    add(&list, 20);
+    add(&list, 30);
+    add(&list, 40);
 
     Node* current = list.head;
     while (current != NULL) {
