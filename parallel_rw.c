@@ -160,43 +160,34 @@ void *parallel_Routine(void *thread_id)
         int operation_type = rand() % 3;
 
         // selects the operation to be performed: 0 - insert, 1 - delete, 2 - member
-        if (operation_type == 0 && insert_ops_done == 0)
+        if (operation_type == 0 && insert_operations_count < local_insert_ops)
         {
-            if (insert_operations_count < local_insert_ops)
-            {
-                pthread_rwlock_wrlock(&rwlock);
-                Insert(random_value, &head);
-                pthread_rwlock_unlock(&rwlock);
-                insert_operations_count++;
-            }
-            else
-                insert_ops_done = 1;
+           
+            pthread_rwlock_wrlock(&rwlock);
+            Insert(random_value, &head);
+            pthread_rwlock_unlock(&rwlock);
+            insert_operations_count++;
+            
         }
 
-        else if (operation_type == 1 && delete_ops_done == 0)
+        else if (operation_type == 1 && delete_operations_count < local_delete_ops)
         {
-            if (delete_operations_count < local_delete_ops)
-            {
-                pthread_rwlock_wrlock(&rwlock);
-                Delete(random_value, &head);
-                pthread_rwlock_unlock(&rwlock);
-                delete_operations_count++;
-            }
-            else
-                delete_ops_done = 1;
+           
+            pthread_rwlock_wrlock(&rwlock);
+            Delete(random_value, &head);
+            pthread_rwlock_unlock(&rwlock);
+            delete_operations_count++;
+           
         }
 
-        else if (operation_type == 2 && member_ops_done == 0)
+        else if (operation_type == 2 && member_operations_count < local_member_ops)
         {
-            if (member_operations_count < local_member_ops)
-            {
-                pthread_rwlock_rdlock(&rwlock);
-                Member(random_value, head);
-                pthread_rwlock_unlock(&rwlock);
-                member_operations_count++;
-            }
-            else
-                member_ops_done = 1;
+         
+            pthread_rwlock_rdlock(&rwlock);
+            Member(random_value, head);
+            pthread_rwlock_unlock(&rwlock);
+            member_operations_count++;
+           
         }
         total_operations = insert_operations_count + member_operations_count + delete_operations_count;
         i++;
