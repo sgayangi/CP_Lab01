@@ -123,9 +123,9 @@ int main(int argc, char *argv[])
     int insert_operations_count = 0;
     int delete_operations_count = 0;
 
-    float m_insert = m_insert_fraction * m;
-    float m_delete = m_delete_fraction  * m;
-    float m_member = m_member_fraction * m;
+    int m_insert = (int)(m_insert_fraction * m);
+    int m_delete = (int)(m_delete_fraction * m);
+    int m_member = (int)(m_member_fraction * m);
 
     gettimeofday(&start, NULL);
 

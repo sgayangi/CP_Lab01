@@ -148,11 +148,6 @@ void *parallel_Routine(void *thread_id)
     int insert_operations_count = 0;
     int delete_operations_count = 0;
 
-    // acts as boolean values for whether each operation has been done the specified number of times.
-    int insert_ops_done = 0;
-    int delete_ops_done = 0;
-    int member_ops_done = 0;
-
     int i = 0;
     while (total_operations < local_m)
     {
@@ -162,32 +157,26 @@ void *parallel_Routine(void *thread_id)
         // selects the operation to be performed: 0 - insert, 1 - delete, 2 - member
         if (operation_type == 0 && insert_operations_count < local_insert_ops)
         {
-           
             pthread_rwlock_wrlock(&rwlock);
             Insert(random_value, &head);
             pthread_rwlock_unlock(&rwlock);
             insert_operations_count++;
-            
         }
 
         else if (operation_type == 1 && delete_operations_count < local_delete_ops)
         {
-           
             pthread_rwlock_wrlock(&rwlock);
             Delete(random_value, &head);
             pthread_rwlock_unlock(&rwlock);
             delete_operations_count++;
-           
         }
 
         else if (operation_type == 2 && member_operations_count < local_member_ops)
         {
-         
             pthread_rwlock_rdlock(&rwlock);
             Member(random_value, head);
             pthread_rwlock_unlock(&rwlock);
             member_operations_count++;
-           
         }
         total_operations = insert_operations_count + member_operations_count + delete_operations_count;
         i++;
