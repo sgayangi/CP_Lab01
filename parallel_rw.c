@@ -6,21 +6,16 @@
 #define MAX_THREADS 1024
 #define UPPER_LIMIT_RANDOM 65535
 
-// Global variables used to store how many times each operation was done
-int member_operations_count = 0;
-int insert_operations_count = 0;
-int delete_operations_count = 0;
-
 int n = 0;
 int m = 0;
 int thread_count = 0;
 float m_insert_fraction = 0.0, m_delete_fraction = 0.0, m_member_fraction = 0.0;
 
 // Total number of each operation
-float m_insert = 0.0, m_delete = 0.0, m_member = 0.0;
+int m_insert = 0, m_delete = 0, m_member = 0;
 
 struct list_node_s *head = NULL;
-pthread_mutex_t mutex;
+pthread_rwlock_t rwlock;
 
 struct list_node_s
 {
@@ -106,69 +101,105 @@ int Delete(int value, struct list_node_s **head_pp)
 }
 
 // parallel routine for the threads
-void *parallel_Routine()
+void *parallel_Routine(void *thread_id)
 {
 
+    int local_m = 0;
+    int local_insert_ops = 0;
+    int local_delete_ops = 0;
+    int local_member_ops = 0;
+
+    int id = *(int *)thread_id;
+
+    // Divide the total no of insert operations to be done among the threads
+    if (m_insert % thread_count <= id)
+    {
+        local_insert_ops = m_insert / thread_count;
+    }
+    else
+    {
+        local_insert_ops = m_insert / thread_count + 1;
+    }
+
+    // Divide the total no of delete operations to be done among the threads
+    if (m_delete % thread_count <= id)
+    {
+        local_delete_ops = m_delete / thread_count;
+    }
+    else
+    {
+        local_delete_ops = m_delete / thread_count + 1;
+    }
+
+    // Divide the total no of member operations to be done among the threads
+    if (m_member % thread_count <= id)
+    {
+        local_member_ops = m_member / thread_count;
+    }
+    else
+    {
+        local_member_ops = m_member / thread_count + 1;
+    }
+
+    local_m = local_insert_ops + local_delete_ops + local_member_ops;
+
     int total_operations = 0;
+    int member_operations_count = 0;
+    int insert_operations_count = 0;
+    int delete_operations_count = 0;
 
     // acts as boolean values for whether each operation has been done the specified number of times.
-    int member_ops_done = 0;
     int insert_ops_done = 0;
     int delete_ops_done = 0;
+    int member_ops_done = 0;
 
-    while (total_operations < m)
+    int i = 0;
+    while (total_operations < local_m)
     {
-        // Random number selected for the operation
-        int random_num = rand() % UPPER_LIMIT_RANDOM;
-
-        // selects the operation to be performed: 0 - insert, 1 - delete, 2 - member
+        int random_value = rand() % UPPER_LIMIT_RANDOM;
         int operation_type = rand() % 3;
 
+        // selects the operation to be performed: 0 - insert, 1 - delete, 2 - member
         if (operation_type == 0 && insert_ops_done == 0)
         {
-
-            pthread_mutex_lock(&mutex);
-            if (insert_operations_count < m_insert)
+            if (insert_operations_count < local_insert_ops)
             {
-                Insert(random_num, &head);
+                pthread_rwlock_wrlock(&rwlock);
+                Insert(random_value, &head);
+                pthread_rwlock_unlock(&rwlock);
                 insert_operations_count++;
             }
             else
                 insert_ops_done = 1;
-            pthread_mutex_unlock(&mutex);
         }
 
-        // Delete Operation
         else if (operation_type == 1 && delete_ops_done == 0)
         {
-
-            pthread_mutex_lock(&mutex);
-            if (delete_operations_count < m_delete)
+            if (delete_operations_count < local_delete_ops)
             {
-                Delete(random_num, &head);
+                pthread_rwlock_wrlock(&rwlock);
+                Delete(random_value, &head);
+                pthread_rwlock_unlock(&rwlock);
                 delete_operations_count++;
             }
             else
                 delete_ops_done = 1;
-            pthread_mutex_unlock(&mutex);
         }
 
-        // Member operation
-        if (operation_type == 2 && member_ops_done == 0)
+        else if (operation_type == 2 && member_ops_done == 0)
         {
-            pthread_mutex_lock(&mutex);
-            if (member_operations_count < m_member)
+            if (member_operations_count < local_member_ops)
             {
-                Member(random_num, head);
+                pthread_rwlock_rdlock(&rwlock);
+                Member(random_value, head);
+                pthread_rwlock_unlock(&rwlock);
                 member_operations_count++;
             }
             else
                 member_ops_done = 1;
-            pthread_mutex_unlock(&mutex);
         }
-
-        // Updating the count
         total_operations = insert_operations_count + member_operations_count + delete_operations_count;
+        i++;
     }
     return NULL;
 }
@@ -181,8 +212,6 @@ double getExecutionTime(struct timeval start, struct timeval end)
 
 int main(int argc, char *argv[])
 {
-
-    // extracting inputs from args
     n = (int)strtol(argv[1], (char **)NULL, 10);
     m = (int)strtol(argv[2], (char **)NULL, 10);
     thread_count = (int)strtol(argv[3], (char **)NULL, 10);
@@ -192,13 +221,17 @@ int main(int argc, char *argv[])
     m_delete_fraction = (float)atof(argv[6]);
 
     pthread_t *thread_handlers;
-    thread_handlers = malloc(sizeof(pthread_t) * thread_count);
+    thread_handlers = (pthread_t *)malloc(sizeof(pthread_t) * thread_count);
 
+    // time variables
     struct timeval start, end;
 
-    m_insert = m_insert_fraction * m;
-    m_delete = m_delete_fraction * m;
-    m_member = m_member_fraction * m;
+    int *thread_id;
+    thread_id = (int *)malloc(sizeof(int) * thread_count);
+
+    m_insert = (int)(m_insert_fraction * m);
+    m_delete = (int)(m_delete_fraction * m);
+    m_member = (int)(m_member_fraction * m);
 
     int i = 0;
 
@@ -210,28 +243,29 @@ int main(int argc, char *argv[])
             i++;
     }
 
-    pthread_mutex_init(&mutex, NULL);
+    pthread_rwlock_init(&rwlock, NULL);
     gettimeofday(&start, NULL);
 
+    // Thread Creation
     i = 0;
     while (i < thread_count)
     {
-        pthread_create(&thread_handlers[i], NULL, (void *)parallel_Routine, NULL);
+        thread_id[i] = i;
+        pthread_create(&thread_handlers[i], NULL, (void *)parallel_Routine, (void *)&thread_id[i]);
         i++;
     }
 
+    // Thread Join
     i = 0;
     while (i < thread_count)
     {
         pthread_join(thread_handlers[i], NULL);
         i++;
     }
-
     gettimeofday(&end, NULL);
+    pthread_rwlock_destroy(&rwlock);
 
-    pthread_mutex_destroy(&mutex);
-
-    printf("Time taken for linked list with single mutex: %.4f milliseconds\n", getExecutionTime(start, end));
+    printf("Linked List with read write locks Time Spent : %.6f\n", getExecutionTime(start, end));
 
     return 0;
 }
