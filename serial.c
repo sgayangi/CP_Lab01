@@ -31,7 +31,6 @@ int Member(int value, struct list_node_s *head_p)
         return 1;
 }
 
-//Linked List Insertion function
 int Insert(int value, struct list_node_s **head_pp)
 {
     struct list_node_s *curr_p = *head_pp;
@@ -61,7 +60,6 @@ int Insert(int value, struct list_node_s **head_pp)
         return 0;
 }
 
-//Linked List Deletion function
 int Delete(int value, struct list_node_s **head_pp)
 {
     struct list_node_s *curr_p = *head_pp;
@@ -120,6 +118,7 @@ int main(int argc, char *argv[])
     }
 
     int total_operations = 0;
+
     int member_operations_count = 0;
     int insert_operations_count = 0;
     int delete_operations_count = 0;
@@ -133,7 +132,7 @@ int main(int argc, char *argv[])
     // total operations goes from 0 to m - 1
     while (total_operations < m)
     {
-
+        // Random number selected for the operation
         int random_num = rand() % UPPER_LIMIT_RANDOM;
 
         // selects the operation to be performed: 0 - insert, 1 - delete, 2 - member
